@@ -3,6 +3,7 @@
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl.html).
 
 from openerp.tests.common import TransactionCase
+from lxml import etree
 
 
 class TestCopyUserAccess(TransactionCase):
@@ -20,7 +21,7 @@ class TestCopyUserAccess(TransactionCase):
     def _prepare_user_data(self):
         data = {
             'login': 'test_user@test.com',
-            'name': 'test user',
+            'name': 'test lagi',
             'password': 'a'
         }
 
@@ -41,8 +42,17 @@ class TestCopyUserAccess(TransactionCase):
         # Create Wizard
         wizard = self.obj_wizard\
             .with_context(ctx).create({'user_id': self.demo_user.id})
-        wizard.with_context(ctx).copy_access_right()
+
+        # Check fields_view_get
+        view = wizard.fields_view_get()
+
+        doc = etree.XML(view['arch'])
+        for node in doc.xpath("//field[@name='user_id']"):
+            domain = node.get('domain')
+            test_domain = "[('id', 'not in', " + str(user.ids) + ")]"
+            self.assertEquals(domain,test_domain)
 
         # Check group_ids(new_user) with group_ids(demo_user)
+        wizard.with_context(ctx).copy_access_right()
         self.assertEquals(set(self.demo_user.groups_id.ids),
                           set(user.groups_id.ids))
